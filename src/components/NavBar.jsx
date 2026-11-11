@@ -1,14 +1,17 @@
 import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 const LINKS = [
   { to: "/", label: "Главная", end: true },
   { to: "/tasks", label: "Задачи" },
   { to: "/dashboard", label: "Дашборд" },
+  { to: "/movies", label: "Фильмы" },
   { to: "/about", label: "О проекте" },
-  { to: "/login", label: "Вход" },
 ];
 
 export default function NavBar() {
+  const { user, loading, signOut } = useAuth();
+
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -27,6 +30,26 @@ export default function NavBar() {
             </NavLink>
           ))}
         </nav>
+        {/* Пока Firebase проверяет сессию, ничего не показываем, чтобы «Вход» не мигал. */}
+        {!loading && (
+          <nav className="auth-nav" aria-label="Аккаунт">
+            {user ? (
+              <>
+                <NavLink to="/profile" title="Профиль">
+                  {user.email}
+                </NavLink>
+                <button type="button" className="text-button" onClick={signOut}>
+                  Выйти
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/login">Вход</NavLink>
+                <NavLink to="/signup">Регистрация</NavLink>
+              </>
+            )}
+          </nav>
+        )}
       </div>
     </header>
   );

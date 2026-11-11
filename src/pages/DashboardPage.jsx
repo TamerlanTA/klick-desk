@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { taskApi } from "../services/taskApi.js";
+import { taskService } from "../services/taskService.js";
 import { getDashboardStats } from "../utils/stats.js";
 import { CATEGORIES, formatDueDate } from "../utils/tasks.js";
 
@@ -22,7 +22,7 @@ export default function DashboardPage() {
     let active = true;
     setLoadState("loading");
     setError("");
-    taskApi
+    taskService
       .listAll({ signal: controller.signal })
       .then((data) => {
         if (!active) return;
@@ -52,7 +52,10 @@ export default function DashboardPage() {
           type="button"
           className="secondary-button"
           disabled={loadState === "loading"}
-          onClick={() => setRevision((value) => value + 1)}
+          onClick={() => {
+            taskService.refresh();
+            setRevision((value) => value + 1);
+          }}
         >
           Обновить данные
         </button>

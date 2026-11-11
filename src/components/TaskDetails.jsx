@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { taskApi } from "../services/taskApi.js";
+import { taskService } from "../services/taskService.js";
 import { formatDueDate } from "../utils/tasks.js";
 
 export default function TaskDetails({ id, onEdit, onDelete, onToggle, busy }) {
@@ -14,7 +14,7 @@ export default function TaskDetails({ id, onEdit, onDelete, onToggle, busy }) {
     setTask(null);
     setError("");
     setNotFound(false);
-    taskApi
+    taskService
       .get(id, { signal: controller.signal })
       .then((data) => {
         if (active) setTask(data);

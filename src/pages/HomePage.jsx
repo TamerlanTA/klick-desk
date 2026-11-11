@@ -4,8 +4,8 @@ import Mascot from "../components/Mascot.jsx";
 const SECTIONS = [
   { to: "/tasks", title: "Задачи", text: "Поиск, фильтры, сортировка и карточки задач." },
   { to: "/dashboard", title: "Дашборд", text: "Сколько сделано, что просрочено и где больше всего дел." },
-  { to: "/about", title: "О проекте", text: "Как устроено приложение и на чём оно сделано." },
-  { to: "/login", title: "Вход", text: "Заготовка страницы входа для следующего задания." },
+  { to: "/movies", title: "Фильмы", text: "Популярные фильмы TMDB с кэшем на один час." },
+  { to: "/login", title: "Вход", text: "Аккаунт Firebase: email и пароль или Google." },
 ];
 
 export default function HomePage() {

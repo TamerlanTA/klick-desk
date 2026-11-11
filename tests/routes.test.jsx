@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.jsx";
+import { AuthProvider } from "../src/auth/AuthContext.jsx";
 import { TASKS_KEY } from "../src/services/taskApi.js";
 import initialTasks from "../src/data/tasks.json";
 import { getDashboardStats } from "../src/utils/stats.js";
@@ -15,8 +16,10 @@ function LocationProbe() {
 function renderAt(path) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App />
-      <LocationProbe />
+      <AuthProvider>
+        <App />
+        <LocationProbe />
+      </AuthProvider>
     </MemoryRouter>,
   );
 }
@@ -56,10 +59,11 @@ describe("routes", () => {
     fireEvent.click(within(nav).getByRole("link", { name: "О проекте" }));
     expect(await screen.findByRole("heading", { name: "О проекте" })).toBeTruthy();
     expect(currentUrl()).toBe("/about");
-    fireEvent.click(within(nav).getByRole("link", { name: "Вход" }));
+    const account = screen.getByRole("navigation", { name: "Аккаунт" });
+    fireEvent.click(within(account).getByRole("link", { name: "Вход" }));
     expect(await screen.findByRole("heading", { name: "Вход" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Войти" }));
-    expect(screen.getByText(/Аутентификация появится в Task 6/)).toBeTruthy();
+    // В тестах ключей Firebase нет — страница честно об этом говорит.
+    expect(screen.getByText(/Firebase не настроен/)).toBeTruthy();
   });
 
   it("shows the custom 404 page with a Home link", async () => {

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import TaskDetails from "../components/TaskDetails.jsx";
 import TaskForm from "../components/TaskForm.jsx";
 import DeleteDialog from "../components/DeleteDialog.jsx";
-import { taskApi } from "../services/taskApi.js";
+import { taskService } from "../services/taskService.js";
 
 export default function TaskDetailsPage() {
   // :id из адреса /tasks/:id
@@ -27,7 +27,7 @@ export default function TaskDetailsPage() {
     setNotice("");
     try {
       // task.id взят из снимка задачи на момент клика, а не из текущего URL.
-      const updated = await taskApi.update(task.id, { completed: !task.completed });
+      const updated = await taskService.update(task.id, { completed: !task.completed });
       setNotice(task.completed ? "Задача возвращена в работу." : "Задача выполнена.");
       return updated;
     } catch (failure) {
@@ -42,7 +42,7 @@ export default function TaskDetailsPage() {
     if (busy) return;
     setBusy(true);
     try {
-      await taskApi.update(id, values);
+      await taskService.update(id, values);
       // Форма закрывается, TaskDetails монтируется заново и загружает свежие данные.
       setEditTask(null);
       setNotice("Изменения сохранены.");
@@ -56,7 +56,7 @@ export default function TaskDetailsPage() {
     setBusy(true);
     setActionError("");
     try {
-      await taskApi.remove(deleteTask.id);
+      await taskService.remove(deleteTask.id);
       // Задачи больше нет — уходим к списку и передаём сообщение через state.
       navigate(backTo, { state: { notice: "Задача удалена." } });
     } catch (failure) {

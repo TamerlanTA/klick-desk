@@ -1,9 +1,61 @@
-# Klick Desk — React: Effects, API и Routes
+# Klick Desk — React: Effects, API, Routes и Auth
 
 Менеджер задач на React + Vite: список, карточка, создание, редактирование, удаление и смена статуса. Интерфейс Klick, таймер фокуса и погода в Алматы.
 
 - Репозиторий: https://github.com/TamerlanTA/klick-desk
 - Опубликованное приложение: https://tamerlanta.github.io/klick-desk/
+
+## Задание 6. Server Data, Caching & Firebase Authentication
+
+Добавлены вход через Firebase (email/пароль и Google), защищённый профиль, кэш запросов задач с инвалидацией после изменений и раздел «Фильмы» (TMDB) с кэшем в localStorage на 1 час. Все маршруты, фильтры и пагинация Task 5 сохранены.
+
+| Требование | Реализация |
+| --- | --- |
+| Переменные окружения `VITE_` | `.env.local` (не в git, `.gitignore`: `.env*`), пример — `.env.example` (исключение `!.env.example`) |
+| Инициализация Firebase отдельно | `src/auth/firebase.js`: конфиг только из `import.meta.env`; без ключей Firebase не запускается, страница входа объясняет, что заполнить |
+| AuthContext, AuthProvider, useAuth | `src/auth/AuthContext.jsx`; провайдер подключён в `src/main.jsx` |
+| onAuthStateChanged, loading | `AuthContext.jsx`: слушатель ставит `user` и снимает `loading`; пока `loading`, защищённые страницы показывают «Проверяем вход…» |
+| Сохранение сессии после F5 | стандартная persistence Firebase Web SDK (`browserLocalPersistence`): сессия хранится SDK в IndexedDB, приложение пароль нигде не хранит |
+| Signup, login, Google, logout | `createUserWithEmailAndPassword`, `signInWithEmailAndPassword`, `signInWithPopup(GoogleAuthProvider)`, `signOut` — без перезагрузки страницы |
+| Ошибки на русском | `src/auth/authErrors.js`: `auth/invalid-credential` → «Неверный email или пароль», `auth/email-already-in-use`, `auth/weak-password`, закрытое окно Google, неразрешённый домен и др. |
+| `/login` | `src/components/Login.jsx`: email + пароль (≥ 6 символов), кнопка «Войти через Google» |
+| `/signup` | `src/components/Signup.jsx`: email, пароль, повтор пароля; проверка `src/auth/validation.js` |
+| `/profile` (защищён) | `src/components/Profile.jsx`: email, UID, способ входа, «Выйти» |
+| Редирект гостя | `src/auth/ProtectedRoute.jsx`: `<Navigate to="/login" state={{ from }}>`; после входа — обратно |
+| Вошедший на /login, /signup | `src/auth/GuestRoute.jsx` → `/profile` (или туда, откуда пришёл) |
+| NavBar по состоянию входа | гость: «Вход», «Регистрация»; вошедший: email (ссылка в профиль) и «Выйти» — на всех страницах |
+| Кэш API с ключами | `src/services/queryCache.js` + `src/services/taskService.js`: ключи `["tasks","list",{фильтры}]`, `["tasks","detail",id]`, `["tasks","everything"]`, TTL 60 с |
+| Инвалидация после create/update/delete | `taskService.create/update/remove` → `invalidateQueries(["tasks"])` |
+| Второй кэш: фильмы | `src/hooks/useMovies.js` + `src/services/movieApi.js`: TMDB `/movie/popular?language=ru-RU`, `localStorage` `klick-desk.movies.v1` = `{ timestamp, movies }`, `MOVIES_TTL_MS = 60 * 60 * 1000` |
+| Loading / error / empty | задачи — как в Task 4–5; фильмы — «Загружаем…», ошибка с «Повторить», пустой ответ, отдельное сообщение при отсутствии ключа |
+| Устаревшие запросы | `AbortController` + флаг `active` в каждом effect; отменённые и ошибочные ответы в кэш не попадают |
+| Архитектура | UI не трогает `localStorage` и не делает `fetch`: задачи — `services/taskService.js`, фильмы — `hooks/useMovies.js` → `services/movieApi.js`, auth — `src/auth/` |
+| Ленивая загрузка | `/signup`, `/profile`, `/movies` подключены через `React.lazy`, как страницы Task 5 |
+
+### Стратегия кэширования
+
+**Задачи (кэш в памяти, `src/services/queryCache.js`).**
+- *Что:* ответы `list` (по набору фильтров), `get` (по ID) и `listAll` (для дашборда). Каждый ответ лежит под своим ключом: другая страница или фильтр — другой ключ.
+- *Когда читается:* при каждом запросе. Если запись моложе 60 секунд — ответ отдаётся из памяти, без задержки API.
+- *Когда перезаписывается:* запись нет или она старше 60 секунд → запрос в `taskApi`, успешный ответ сохраняется.
+- *Когда сбрасывается:* после любого создания, редактирования, смены статуса или удаления (`invalidateQueries(["tasks"])` — все списки, карточки и статистика), по кнопкам «Обновить список», «Обновить данные» и «Проверить ошибку API», а также при перезагрузке страницы (кэш в памяти). Ошибки и отменённые запросы не кэшируются.
+
+**Фильмы (кэш в `localStorage`, `src/services/movieApi.js`).**
+- *Что:* первая страница популярных фильмов TMDB в виде `{ timestamp, movies }` по ключу `klick-desk.movies.v1`.
+- *Когда читается:* при открытии `/movies`. Если `Date.now() - timestamp < MOVIES_TTL_MS` (1 час) — фильмы из кэша, баннер «Показано из кэша».
+- *Когда перезаписывается:* кэша нет, он старше часа или нажата **Refresh** → запрос в TMDB, новый `{ timestamp, movies }`, баннер «Загружено из API».
+- *Когда игнорируется:* Refresh (принудительный запрос), истёкший час, повреждённые данные. Если TMDB недоступен, а старый кэш есть — показываем его и сообщение об ошибке. Без ключа TMDB запрос не делается и кэш не используется: страница объясняет, куда вставить ключ.
+
+### Переменные окружения
+
+Скопировать `.env.example` в `.env.local` и заполнить:
+
+| Переменная | Где взять |
+| --- | --- |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID` | Firebase Console → Project settings → Your apps → Web app → `firebaseConfig` |
+| `VITE_TMDB_API_KEY` | themoviedb.org → Settings → API → API Key (v3 auth) |
+
+В Firebase Console нужно включить провайдеры **Email/Password** и **Google** (Authentication → Sign-in method) и добавить `tamerlanta.github.io` в Authentication → Settings → **Authorized domains** — без этого вход через Google на опубликованном сайте не работает. Значения `VITE_` встраиваются в собранный JavaScript при `npm run build`, поэтому `npm run deploy` нужно запускать на машине, где есть заполненный `.env.local`. Конфиг Firebase Web — не секрет (его видит любой браузер); `.env` нужен, чтобы ключи не лежали в исходниках и их можно было поменять без правки кода.
 
 ## Задание 5. Routes
 
@@ -88,6 +140,7 @@ GitHub Pages ничего не знает о маршрутах React: на `/kl
 
 ```sh
 npm ci
+cp .env.example .env.local   # и заполнить значения
 npm run dev
 npm run lint
 npm test
@@ -96,7 +149,7 @@ npm run build
 
 Локальная страница: http://localhost:5173/klick-desk/ (например, http://localhost:5173/klick-desk/tasks?status=active или http://localhost:5173/klick-desk/dashboard).
 
-Тесты (38) проверяют маршруты и NavLink, 404, невалидный ID, карточку по прямому URL, чтение/запись фильтров в URL и подмену некорректных значений, возврат «Назад» к тем же фильтрам, статистику дашборда и её фильтр, а также CRUD, поиск/сортировку/пагинацию, миграцию, ошибки, отмену, устаревшие ответы, захваченный ID при завершении задачи, повтор загрузки и cleanup таймера/погоды. В тестах случайность фиксируется, чтобы сценарии повторялись.
+Тесты (53) проверяют вход/регистрацию/Google/выход с моком Firebase, редирект гостя с `/profile` и вошедшего с `/login`, проверку пароля и русские ошибки, кэш задач (повторное чтение без запроса, сброс после изменения, TTL, неудачные ответы не кэшируются), `useMovies` (свежий кэш без запроса, запрос после истечения TTL, Refresh мимо кэша, старый кэш при ошибке API, отсутствие ключа), а также маршруты и NavLink, 404, невалидный ID, карточку по прямому URL, чтение/запись фильтров в URL и подмену некорректных значений, возврат «Назад» к тем же фильтрам, статистику дашборда и её фильтр, а также CRUD, поиск/сортировку/пагинацию, миграцию, ошибки, отмену, устаревшие ответы, захваченный ID при завершении задачи, повтор загрузки и cleanup таймера/погоды. В тестах случайность фиксируется, чтобы сценарии повторялись.
 
 ## Структура
 
@@ -106,7 +159,11 @@ npm run build
 - `src/layouts/TasksLayout.jsx`: интро с маскотом, таймер и погода для `/tasks` и `/tasks/:id`.
 - `src/pages/`: Home, About, Tasks, TaskDetails, Dashboard, Login, NotFound.
 - `src/hooks/useTaskFilters.js`: фильтры списка в URL.
+- `src/auth/`: `firebase.js`, `AuthContext.jsx` (AuthProvider, useAuth), `ProtectedRoute.jsx`, `GuestRoute.jsx`, ошибки и проверка формы.
+- `src/components/Login.jsx`, `Signup.jsx`, `Profile.jsx`, `MovieCard.jsx`.
 - `src/services/taskApi.js`: имитация API и хранилище задач.
+- `src/services/queryCache.js`, `src/services/taskService.js`: кэш запросов задач и инвалидация.
+- `src/services/movieApi.js`, `src/hooks/useMovies.js`: TMDB и кэш фильмов.
 - `src/services/settingsApi.js`: чтение/сохранение настроек сортировки и размера страницы.
 - `src/utils/stats.js`: расчёт статистики дашборда.
 - `src/styles/`: `styles.css` (стиль Task 4) и `pages.css` (новые страницы).

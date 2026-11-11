@@ -32,13 +32,19 @@ export default function AboutPage() {
           записанным числам.
         </li>
         <li>
+          Вход — Firebase Authentication (email и пароль или Google), профиль
+          доступен только после входа. Ответы API задач кэшируются и
+          сбрасываются после изменений, популярные фильмы TMDB хранятся в кэше
+          один час.
+        </li>
+        <li>
           Рядом со списком — таймер фокуса и текущая погода в Алматы
           (Open-Meteo).
         </li>
       </ul>
 
       <h2>Стек</h2>
-      <p>React 19, React Router, Vite, обычный CSS, Vitest и Testing Library. Сайт опубликован на GitHub Pages.</p>
+      <p>React 19, React Router, Firebase Auth, Vite, обычный CSS, Vitest и Testing Library. Сайт опубликован на GitHub Pages.</p>
 
       <p>
         <Link className="primary-button" to="/tasks">

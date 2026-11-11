@@ -2,6 +2,8 @@ node_modules/
 dist/
 .DS_Store
 .env*
+# Пример переменных без значений должен быть в репозитории.
+!.env.example
 coverage/
 .qa/
 .claude/

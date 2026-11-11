@@ -8,7 +8,7 @@ import DeleteDialog from "../components/DeleteDialog.jsx";
 import Pagination from "../components/Pagination.jsx";
 import Icon from "../components/Icon.jsx";
 import { readSettings, saveSettings } from "../services/settingsApi.js";
-import { taskApi } from "../services/taskApi.js";
+import { taskService } from "../services/taskService.js";
 import { useTaskFilters } from "../hooks/useTaskFilters.js";
 
 export default function TasksPage() {
@@ -43,7 +43,7 @@ export default function TasksPage() {
     let active = true;
     setLoadState("loading");
     setError("");
-    taskApi.list({ search, category, status, sort, page, pageSize,
+    taskService.list({ search, category, status, sort, page, pageSize,
       signal: controller.signal,
     }).then((data) => {
       if (!active) return;
@@ -61,7 +61,9 @@ export default function TasksPage() {
     };
   }, [search, category, status, sort, page, pageSize, revision, setSummary]);
 
+  // Сбрасываем кэш, иначе повторный запрос с теми же фильтрами вернул бы старый ответ.
   function reload() {
+    taskService.refresh();
     setRevision((value) => value + 1);
   }
 
@@ -85,8 +87,8 @@ export default function TasksPage() {
     if (busy) return;
     setBusy(true);
     try {
-      if (formTask) await taskApi.update(formTask.id, values);
-      else await taskApi.create(values);
+      if (formTask) await taskService.update(formTask.id, values);
+      else await taskService.create(values);
       setIsFormOpen(false);
       setNotice(formTask ? "Изменения сохранены." : "Задача добавлена.");
       // Новая задача должна оказаться первой: сбрасываем фильтры и сортируем по новизне.
@@ -104,7 +106,7 @@ export default function TasksPage() {
     setBusy(true);
     setActionError("");
     try {
-      await taskApi.update(task.id, { completed: !task.completed });
+      await taskService.update(task.id, { completed: !task.completed });
       setNotice(
         task.completed ? "Задача возвращена в работу." : "Задача выполнена.",
       );
@@ -127,7 +129,7 @@ export default function TasksPage() {
     setBusy(true);
     setActionError("");
     try {
-      await taskApi.remove(itemId);
+      await taskService.remove(itemId);
       setDeleteTask(null);
       setNotice("Задача удалена.");
       reload();
@@ -148,7 +150,7 @@ export default function TasksPage() {
         </button>
         <button className="text-button" type="button"
           disabled={busy || loadState === "loading"}
-          onClick={() => { taskApi.failNextRequest(); reload(); }}>
+          onClick={() => { taskService.failNextRequest(); setRevision((value) => value + 1); }}>
           Проверить ошибку API
         </button>
         {!isFormOpen && (

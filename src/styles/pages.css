@@ -297,3 +297,106 @@ code {
     padding: 22px;
   }
 }
+
+/* Task 6: аккаунт в меню, профиль, фильмы */
+.auth-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.auth-nav a {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-nav a.active,
+.auth-nav a:hover {
+  color: var(--ink);
+  background: var(--soft);
+}
+.auth-nav .text-button {
+  padding: 8px 6px;
+}
+.login-card fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.login-card .secondary-button {
+  margin-top: 4px;
+}
+.profile-details {
+  grid-template-columns: 1fr;
+}
+.cache-banner {
+  display: inline-block;
+  margin: 16px 0 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: var(--soft);
+}
+.cache-banner.is-api {
+  color: #386b43;
+  background: #edf6ef;
+}
+.cache-banner.is-cache {
+  color: var(--blue-dark);
+  background: #eef2fc;
+}
+.movie-grid {
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 24px 16px;
+}
+.movie-card img,
+.movie-poster-empty {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--soft);
+}
+.movie-poster-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.movie-card h3 {
+  margin: 10px 0 4px;
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.movie-card p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.movie-rating {
+  color: var(--ink);
+}
+@media (max-width: 600px) {
+  .auth-nav {
+    width: 100%;
+  }
+  .movie-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
