@@ -10,8 +10,18 @@
       content="Klick Desk — планировщик задач с таймером фокуса и погодой в Алматы."
     />
     <title>Klick Desk — планировщик задач</title>
-    <script type="module" crossorigin src="/klick-desk/assets/index-2rFecTKT.js"></script>
-    <link rel="stylesheet" crossorigin href="/klick-desk/assets/index-De7-bcv6.css">
+    <script>
+      // Пара к public/404.html: если пришли с ?p=tasks/123, возвращаем
+      // настоящий адрес без перезагрузки, и React Router откроет нужную страницу.
+      (function () {
+        var p = new URLSearchParams(window.location.search).get("p");
+        if (p !== null) {
+          window.history.replaceState(null, "", "/klick-desk/" + p + window.location.hash);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/klick-desk/assets/index-DvbJNMFG.js"></script>
+    <link rel="stylesheet" crossorigin href="/klick-desk/assets/index-C9aIs9sF.css">
   </head>
   <body>
     <div id="root"></div>
