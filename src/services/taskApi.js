@@ -85,6 +85,13 @@ function readTasks() {
   return tasks;
 }
 
+// Отдельное имя ошибки: страница отличит «задачи нет» от временного сбоя сети.
+function notFound() {
+  const error = new Error("Задача не найдена.");
+  error.name = "NotFoundError";
+  return error;
+}
+
 function validate(values) {
   const errors = validateTask(values);
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
@@ -146,10 +153,15 @@ export const taskApi = {
     );
   },
 
+  // Все задачи без пагинации: дашборд сам считает по ним статистику.
+  listAll(options) {
+    return request(() => readTasks(), options);
+  },
+
   get(id, options) {
     return request(() => {
       const task = readTasks().find((item) => item.id === id);
-      if (!task) throw new Error("Задача не найдена.");
+      if (!task) throw notFound();
       return task;
     }, options);
   },
@@ -175,7 +187,7 @@ export const taskApi = {
     return request(() => {
       const tasks = readTasks();
       const previous = tasks.find((task) => task.id === id);
-      if (!previous) throw new Error("Задача не найдена.");
+      if (!previous) throw notFound();
       const updated = {
         ...previous,
         ...values,
@@ -192,7 +204,7 @@ export const taskApi = {
     return request(() => {
       const tasks = readTasks();
       if (!tasks.some((task) => task.id === id))
-        throw new Error("Задача не найдена.");
+        throw notFound();
       saveTasks(tasks.filter((task) => task.id !== id));
       return { id };
     });

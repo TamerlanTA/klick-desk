@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { taskApi } from "../api/taskApi.js";
+import { taskApi } from "../services/taskApi.js";
 import { formatDueDate } from "../utils/tasks.js";
 
-export default function TaskDetails({ id, onBack, onEdit, onDelete, onToggle, busy }) {
+export default function TaskDetails({ id, onEdit, onDelete, onToggle, busy }) {
   const [task, setTask] = useState(null);
   const [error, setError] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
@@ -12,13 +13,17 @@ export default function TaskDetails({ id, onBack, onEdit, onDelete, onToggle, bu
     let active = true;
     setTask(null);
     setError("");
+    setNotFound(false);
     taskApi
       .get(id, { signal: controller.signal })
       .then((data) => {
         if (active) setTask(data);
       })
       .catch((failure) => {
-        if (active && failure.name !== "AbortError") setError(failure.message);
+        if (!active || failure.name === "AbortError") return;
+        // Несуществующий ID — это не сбой, повтор не поможет.
+        if (failure.name === "NotFoundError") setNotFound(true);
+        else setError(failure.message);
       });
     return () => {
       active = false;
@@ -28,10 +33,14 @@ export default function TaskDetails({ id, onBack, onEdit, onDelete, onToggle, bu
 
   return (
     <section className="detail-view" aria-labelledby="detail-heading">
-      <button className="text-button" type="button" onClick={onBack}>
-        ← Назад к списку
-      </button>
-      {error ? (
+      {notFound ? (
+        <div className="list-error">
+          <h2 id="detail-heading">Задача не найдена</h2>
+          <p>
+            Задачи с ID «{id}» нет. Возможно, она удалена или ссылка неверная.
+          </p>
+        </div>
+      ) : error ? (
         <div className="list-error">
           <p role="alert">{error}</p>
           <button

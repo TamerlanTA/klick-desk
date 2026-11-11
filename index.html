@@ -10,6 +10,16 @@
       content="Klick Desk — планировщик задач с таймером фокуса и погодой в Алматы."
     />
     <title>Klick Desk — планировщик задач</title>
+    <script>
+      // Пара к public/404.html: если пришли с ?p=tasks/123, возвращаем
+      // настоящий адрес без перезагрузки, и React Router откроет нужную страницу.
+      (function () {
+        var p = new URLSearchParams(window.location.search).get("p");
+        if (p !== null) {
+          window.history.replaceState(null, "", "%BASE_URL%" + p + window.location.hash);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -7,7 +7,6 @@ export default function TaskList({
   onEdit,
   onDelete,
   onResetFilters,
-  onSelect,
   busy,
 }) {
   if (tasks.length === 0) {
@@ -41,7 +40,6 @@ export default function TaskList({
           onToggle={onToggle}
           onEdit={onEdit}
           onDelete={onDelete}
-          onSelect={onSelect}
           busy={busy}
         />
       ))}

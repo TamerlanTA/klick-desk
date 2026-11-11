@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Klick Desk</title>
+    <script>
+      // GitHub Pages не знает про маршруты React и на /klick-desk/tasks/123
+      // отдаёт этот файл. Переносим путь в параметр ?p= и открываем index.html,
+      // а скрипт в index.html вернёт исходный адрес.
+      var base = "/klick-desk/"; // должно совпадать с base в vite.config.js
+      var l = window.location;
+      var path = l.pathname.slice(base.length) + l.search;
+      l.replace(base + "?p=" + encodeURIComponent(path) + l.hash);
+    </script>
+  </head>
+  <body></body>
+</html>

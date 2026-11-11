@@ -1,3 +1,4 @@
+import { Link, useLocation } from "react-router-dom";
 import {
   CATEGORIES,
   PRIORITIES,
@@ -11,9 +12,9 @@ export default function TaskItem({
   onToggle,
   onEdit,
   onDelete,
-  onSelect,
   busy,
 }) {
+  const location = useLocation();
   const overdue = !task.completed && task.dueDate < getAlmatyDate();
 
   return (
@@ -32,13 +33,14 @@ export default function TaskItem({
       </label>
       <div className="task-content">
         <h3>
-          <button
+          {/* Ссылка на карточку. В state запоминаем список с фильтрами для «Назад». */}
+          <Link
             className="task-title"
-            type="button"
-            onClick={() => onSelect(task.id)}
+            to={`/tasks/${task.id}`}
+            state={{ backTo: location.pathname + location.search }}
           >
             {task.title}
-          </button>
+          </Link>
         </h3>
         <div className="task-meta">
           <span

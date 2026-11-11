@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
-import { taskApi, TASKS_KEY } from "../src/api/taskApi.js";
+import { taskApi, TASKS_KEY } from "../src/services/taskApi.js";
 import initialTasks from "../src/data/tasks.json";
 
 beforeEach(() => {
