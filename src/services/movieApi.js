@@ -34,11 +34,12 @@ export function isCacheFresh(entry, now = Date.now()) {
   return entry !== null && now - entry.timestamp < MOVIES_TTL_MS;
 }
 
-export async function fetchPopularMovies({ signal } = {}) {
+export async function fetchPopularMovies({ signal, onSource } = {}) {
   const params = new URLSearchParams({ api_key: getTmdbKey(), language: "ru-RU", page: "1" });
   const response = await fetch(`https://api.themoviedb.org/3/movie/popular?${params}`, { signal });
   if (response.status === 401) throw new Error("TMDB не принял ключ. Проверь VITE_TMDB_API_KEY.");
   if (!response.ok) throw new Error(`TMDB ответил ошибкой ${response.status}. Повтори запрос.`);
+  onSource?.(response.headers?.get("X-Klick-Cache") === "hit" ? "cache" : "api");
   const data = await response.json();
   if (!Array.isArray(data?.results)) throw new Error("TMDB вернул неожиданный ответ.");
   // Оставляем только поля, которые показывает карточка.

@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { createAppStore } from "../src/store/store.js";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.jsx";
@@ -10,21 +18,28 @@ import { getDashboardStats } from "../src/utils/stats.js";
 // Показывает текущий адрес, чтобы тест мог проверить URL.
 function LocationProbe() {
   const location = useLocation();
-  return <output data-testid="location">{location.pathname + location.search}</output>;
+  return (
+    <output data-testid="location">
+      {location.pathname + location.search}
+    </output>
+  );
 }
 
 function renderAt(path) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AuthProvider>
-        <App />
-        <LocationProbe />
-      </AuthProvider>
-    </MemoryRouter>,
+    <Provider store={createAppStore()}>
+      <MemoryRouter initialEntries={[path]}>
+        <AuthProvider>
+          <App />
+          <LocationProbe />
+        </AuthProvider>
+      </MemoryRouter>
+    </Provider>,
   );
 }
 
-const currentUrl = () => decodeURIComponent(screen.getByTestId("location").textContent);
+const currentUrl = () =>
+  decodeURIComponent(screen.getByTestId("location").textContent);
 
 beforeEach(() => {
   vi.spyOn(Math, "random").mockReturnValue(0.5);
@@ -34,7 +49,12 @@ beforeEach(() => {
     vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        current: { temperature_2m: 20, apparent_temperature: 17, weather_code: 0, wind_speed_10m: 5 },
+        current: {
+          temperature_2m: 20,
+          apparent_temperature: 17,
+          weather_code: 0,
+          wind_speed_10m: 5,
+        },
       }),
     }),
   );
@@ -47,17 +67,25 @@ afterEach(() => {
 describe("routes", () => {
   it("renders Home with navigation links and highlights the active NavLink", () => {
     renderAt("/");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Klick Desk");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
+      "Klick Desk",
+    );
     const nav = screen.getByRole("navigation", { name: "Разделы" });
-    expect(within(nav).getByRole("link", { name: "Главная" }).className).toContain("active");
-    expect(within(nav).getByRole("link", { name: "Задачи" }).className).not.toContain("active");
+    expect(
+      within(nav).getByRole("link", { name: "Главная" }).className,
+    ).toContain("active");
+    expect(
+      within(nav).getByRole("link", { name: "Задачи" }).className,
+    ).not.toContain("active");
   });
 
   it("navigates between pages through links without a reload", async () => {
     renderAt("/");
     const nav = screen.getByRole("navigation", { name: "Разделы" });
     fireEvent.click(within(nav).getByRole("link", { name: "О проекте" }));
-    expect(await screen.findByRole("heading", { name: "О проекте" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "О проекте" }),
+    ).toBeTruthy();
     expect(currentUrl()).toBe("/about");
     const account = screen.getByRole("navigation", { name: "Аккаунт" });
     fireEvent.click(within(account).getByRole("link", { name: "Вход" }));
@@ -75,15 +103,26 @@ describe("routes", () => {
 
   it("shows «not found» for an invalid task ID instead of crashing", async () => {
     renderAt("/tasks/does-not-exist");
-    expect(await screen.findByRole("heading", { name: "Задача не найдена" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "Задача не найдена" }),
+    ).toBeTruthy();
     expect(screen.getByRole("link", { name: "Все задачи" })).toBeTruthy();
   });
 
   it("opens task details by URL with 8 fields and Back/All links", async () => {
     const task = initialTasks[0];
     renderAt(`/tasks/${task.id}`);
-    expect(await screen.findByRole("heading", { name: task.title })).toBeTruthy();
-    for (const label of ["Направление", "Приоритет", "Срок", "Статус", "Создана", "ID"]) {
+    expect(
+      await screen.findByRole("heading", { name: task.title }),
+    ).toBeTruthy();
+    for (const label of [
+      "Направление",
+      "Приоритет",
+      "Срок",
+      "Статус",
+      "Создана",
+      "ID",
+    ]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     expect(screen.getByText(task.id)).toBeTruthy();
@@ -100,9 +139,17 @@ describe("filters in the URL", () => {
     expect(screen.getByLabelText("Статус задач").value).toBe("completed");
     expect(screen.getByLabelText("Сортировка задач").value).toBe("title");
     expect(screen.getByLabelText("Задач на странице").value).toBe("12");
-    expect(screen.getByRole("button", { name: "Учёба" }).getAttribute("aria-pressed")).toBe("true");
-    const expected = initialTasks.filter((task) => task.category === "Учёба" && task.completed);
-    expect(within(list).getAllByRole("link")).toHaveLength(Math.min(12, expected.length));
+    expect(
+      screen
+        .getByRole("button", { name: "Учёба" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    const expected = initialTasks.filter(
+      (task) => task.category === "Учёба" && task.completed,
+    );
+    expect(within(list).getAllByRole("link")).toHaveLength(
+      Math.min(12, expected.length),
+    );
   });
 
   it("replaces invalid URL values with defaults", async () => {
@@ -111,13 +158,21 @@ describe("filters in the URL", () => {
     expect(screen.getByLabelText("Статус задач").value).toBe("all");
     expect(screen.getByLabelText("Сортировка задач").value).toBe("newest");
     expect(screen.getByLabelText("Задач на странице").value).toBe("6");
-    expect(screen.getByRole("button", { name: "Страница 1" }).getAttribute("aria-current")).toBe("page");
+    expect(
+      screen
+        .getByRole("button", { name: "Страница 1" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
   });
 
   it("writes filter changes to the URL and resets the page to 1", async () => {
     renderAt("/tasks?page=3");
     await screen.findByRole("list", { name: "Задачи" });
-    expect(screen.getByRole("button", { name: "Страница 3" }).getAttribute("aria-current")).toBe("page");
+    expect(
+      screen
+        .getByRole("button", { name: "Страница 3" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
     fireEvent.click(screen.getByRole("button", { name: "Контент" }));
     await waitFor(() => expect(currentUrl()).toContain("category=Контент"));
     expect(currentUrl()).not.toContain("page=");
@@ -141,11 +196,17 @@ describe("dashboard", () => {
     renderAt("/dashboard");
     const stats = await screen.findByLabelText("Статистика");
     const all = getDashboardStats(initialTasks);
-    expect(within(stats).getByText("Всего задач").nextSibling.textContent).toBe(String(all.total));
+    expect(within(stats).getByText("Всего задач").nextSibling.textContent).toBe(
+      String(all.total),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Агентство" }));
     const agency = getDashboardStats(initialTasks, "Агентство");
-    expect(within(stats).getByText("Всего задач").nextSibling.textContent).toBe(String(agency.total));
-    expect(within(stats).getByText("Выполнено").nextSibling.textContent).toBe(String(agency.completed));
+    expect(within(stats).getByText("Всего задач").nextSibling.textContent).toBe(
+      String(agency.total),
+    );
+    expect(within(stats).getByText("Выполнено").nextSibling.textContent).toBe(
+      String(agency.completed),
+    );
     expect(agency.total).toBeLessThan(all.total);
   });
 
@@ -156,6 +217,8 @@ describe("dashboard", () => {
     );
     renderAt("/dashboard");
     const stats = await screen.findByLabelText("Статистика");
-    expect(within(stats).getByText("Всего задач").nextSibling.textContent).toBe("3");
+    expect(within(stats).getByText("Всего задач").nextSibling.textContent).toBe(
+      "3",
+    );
   });
 });

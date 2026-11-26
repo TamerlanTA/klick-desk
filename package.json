@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/build-service-worker.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
@@ -14,9 +14,11 @@
   },
   "dependencies": {
     "@fontsource-variable/onest": "^5.3.1",
+    "@reduxjs/toolkit": "^2.15.0",
     "firebase": "^13.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-redux": "^9.3.1",
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {

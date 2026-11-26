@@ -400,3 +400,22 @@ code {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* PWA status and narrow-screen navigation. */
+.pwa-status { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 0; font-size: 13px; overflow-wrap: anywhere; }
+.connection-online { color: #386b43; }
+.connection-offline { color: #80551a; }
+.pwa-update { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; width: 100%; padding: 16px; border-radius: 16px; background: #eef2fc; }
+.offline-page { max-width: 760px; }
+.menu-toggle { display: none; }
+@media (max-width: 600px) {
+  .menu-toggle { display: inline-flex; margin-left: auto; min-height: 44px; }
+  .main-nav { display: none; flex-wrap: wrap; }
+  .main-nav.is-open { display: flex; }
+  .main-nav a, .auth-nav a, .auth-nav button { min-height: 44px; display: inline-flex; align-items: center; }
+  .auth-nav { flex-wrap: wrap; }
+  .pwa-status, .pwa-update { align-items: flex-start; }
+  .pwa-update button { width: 100%; }
+  .detail-actions > *, .login-card { min-width: 0; }
+  .profile-details dd { overflow-wrap: anywhere; }
+}

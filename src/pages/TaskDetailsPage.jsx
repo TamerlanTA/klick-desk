@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import TaskDetails from "../components/TaskDetails.jsx";
 import TaskForm from "../components/TaskForm.jsx";
 import DeleteDialog from "../components/DeleteDialog.jsx";
-import { taskService } from "../services/taskService.js";
+import { useDispatch } from "react-redux";
+import { mutateTask } from "../features/tasks/tasksSlice.js";
 
 export default function TaskDetailsPage() {
+  const dispatch = useDispatch();
   // :id из адреса /tasks/:id
   const { id } = useParams();
   const location = useLocation();
@@ -27,8 +29,16 @@ export default function TaskDetailsPage() {
     setNotice("");
     try {
       // task.id взят из снимка задачи на момент клика, а не из текущего URL.
-      const updated = await taskService.update(task.id, { completed: !task.completed });
-      setNotice(task.completed ? "Задача возвращена в работу." : "Задача выполнена.");
+      const updated = await dispatch(
+        mutateTask({
+          operation: "update",
+          id: task.id,
+          values: { completed: !task.completed },
+        }),
+      ).unwrap();
+      setNotice(
+        task.completed ? "Задача возвращена в работу." : "Задача выполнена.",
+      );
       return updated;
     } catch (failure) {
       setActionError(failure.message);
@@ -42,7 +52,7 @@ export default function TaskDetailsPage() {
     if (busy) return;
     setBusy(true);
     try {
-      await taskService.update(id, values);
+      await dispatch(mutateTask({ operation: "update", id, values })).unwrap();
       // Форма закрывается, TaskDetails монтируется заново и загружает свежие данные.
       setEditTask(null);
       setNotice("Изменения сохранены.");
@@ -56,7 +66,9 @@ export default function TaskDetailsPage() {
     setBusy(true);
     setActionError("");
     try {
-      await taskService.remove(deleteTask.id);
+      await dispatch(
+        mutateTask({ operation: "remove", id: deleteTask.id }),
+      ).unwrap();
       // Задачи больше нет — уходим к списку и передаём сообщение через state.
       navigate(backTo, { state: { notice: "Задача удалена." } });
     } catch (failure) {

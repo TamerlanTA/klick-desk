@@ -1,35 +1,25 @@
 import { useEffect, useState } from "react";
-import { taskService } from "../services/taskService.js";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchTaskDetails,
+  selectCurrentTask,
+  selectTaskRevision,
+} from "../features/tasks/tasksSlice.js";
 import { formatDueDate } from "../utils/tasks.js";
 
 export default function TaskDetails({ id, onEdit, onDelete, onToggle, busy }) {
-  const [task, setTask] = useState(null);
-  const [error, setError] = useState("");
-  const [notFound, setNotFound] = useState(false);
+  const dispatch = useDispatch();
+  const current = useSelector(selectCurrentTask);
+  const details = useSelector((state) => state.tasks.details);
+  const taskRevision = useSelector(selectTaskRevision);
+  const task = details.id === id ? current : null;
+  const error = details.id === id ? details.error : "";
+  const notFound = details.id === id && details.notFound;
   const [revision, setRevision] = useState(0);
-
   useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    setTask(null);
-    setError("");
-    setNotFound(false);
-    taskService
-      .get(id, { signal: controller.signal })
-      .then((data) => {
-        if (active) setTask(data);
-      })
-      .catch((failure) => {
-        if (!active || failure.name === "AbortError") return;
-        // Несуществующий ID — это не сбой, повтор не поможет.
-        if (failure.name === "NotFoundError") setNotFound(true);
-        else setError(failure.message);
-      });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [id, revision]);
+    const request = dispatch(fetchTaskDetails(id));
+    return () => request.abort();
+  }, [dispatch, id, revision, taskRevision]);
 
   return (
     <section className="detail-view" aria-labelledby="detail-heading">
@@ -82,9 +72,14 @@ export default function TaskDetails({ id, onEdit, onDelete, onToggle, busy }) {
             </div>
             <div>
               <dt>Создана</dt>
-              <dd>{task.createdAt && Number.isFinite(Date.parse(task.createdAt))
-                ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeZone: "Asia/Almaty" }).format(new Date(task.createdAt))
-                : "Дата не сохранена"}</dd>
+              <dd>
+                {task.createdAt && Number.isFinite(Date.parse(task.createdAt))
+                  ? new Intl.DateTimeFormat("ru-RU", {
+                      dateStyle: "medium",
+                      timeZone: "Asia/Almaty",
+                    }).format(new Date(task.createdAt))
+                  : "Дата не сохранена"}
+              </dd>
             </div>
             <div>
               <dt>ID</dt>
@@ -92,13 +87,17 @@ export default function TaskDetails({ id, onEdit, onDelete, onToggle, busy }) {
             </div>
           </dl>
           <div className="detail-actions">
-            <button type="button" className="primary-button" disabled={busy}
-              onClick={async () => {
-                // ID и состояние берутся из снимка задачи в момент клика.
-                const updated = await onToggle(task);
-                if (updated && updated.id === id) setTask(updated);
-              }}>
-              {busy ? "Сохраняем…" : task.completed ? "Вернуть в работу" : "Отметить выполненной"}
+            <button
+              type="button"
+              className="primary-button"
+              disabled={busy}
+              onClick={() => onToggle(task)}
+            >
+              {busy
+                ? "Сохраняем…"
+                : task.completed
+                  ? "Вернуть в работу"
+                  : "Отметить выполненной"}
             </button>
             <button
               type="button"

@@ -9,6 +9,7 @@ import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 import GuestRoute from "./auth/GuestRoute.jsx";
 
 // Ленивые страницы: их код скачивается отдельным файлом при первом переходе.
+const OfflinePage = lazy(() => import("./pages/OfflinePage.jsx"));
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -23,6 +24,7 @@ export default function App() {
     <Routes>
       <Route element={<RootLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="offline" element={<OfflinePage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="tasks" element={<TasksLayout />}>
           <Route index element={<TasksPage />} />

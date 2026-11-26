@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
+import PwaStatus from "../components/PwaStatus.jsx";
 import NavBar from "../components/NavBar.jsx";
 
 // Общая оболочка всех страниц: меню сверху, страница в Outlet, подвал снизу.
@@ -8,6 +9,7 @@ export default function RootLayout() {
     <>
       <NavBar />
       <main className="workspace">
+        <PwaStatus />
         {/* Пока ленивая страница загружается, показываем fallback. */}
         <Suspense
           fallback={

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 
@@ -10,6 +11,7 @@ const LINKS = [
 ];
 
 export default function NavBar() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const { user, loading, signOut } = useAuth();
 
   return (
@@ -21,11 +23,29 @@ export default function NavBar() {
           </span>
           <span className="brand-product">desk</span>
         </Link>
-        <nav className="main-nav" aria-label="Разделы">
+        <button
+          className="menu-toggle secondary-button"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
+          onClick={() => setMenuOpen((value) => !value)}
+        >
+          {menuOpen ? "Закрыть меню" : "Меню"}
+        </button>
+        <nav
+          id="main-navigation"
+          className={`main-nav${menuOpen ? " is-open" : ""}`}
+          aria-label="Разделы"
+        >
           {LINKS.map((link) => (
             // NavLink сам добавляет класс active для текущего раздела.
             // end у «/»: иначе главная подсвечивалась бы на любой странице.
-            <NavLink key={link.to} to={link.to} end={link.end}>
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              onClick={() => setMenuOpen(false)}
+            >
               {link.label}
             </NavLink>
           ))}

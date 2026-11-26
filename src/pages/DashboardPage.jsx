@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { taskService } from "../services/taskService.js";
-import { getDashboardStats } from "../utils/stats.js";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchAllTasks,
+  selectDashboardStats,
+  selectTaskRevision,
+} from "../features/tasks/tasksSlice.js";
 import { CATEGORIES, formatDueDate } from "../utils/tasks.js";
 
 // Ссылка на список с готовыми фильтрами в URL.
@@ -10,42 +15,25 @@ function tasksLink(params) {
 }
 
 export default function DashboardPage() {
-  const [tasks, setTasks] = useState([]);
-  const [loadState, setLoadState] = useState("loading");
-  const [error, setError] = useState("");
+  const dispatch = useDispatch();
+  const { status, error } = useSelector((state) => state.tasks.all);
+  const loadState = status === "idle" ? "loading" : status;
+  const taskRevision = useSelector(selectTaskRevision);
   const [revision, setRevision] = useState(0);
-  // Интерактивный фильтр: меняет статистику без нового запроса.
   const [category, setCategory] = useState("Все");
-
+  const stats = useSelector((state) => selectDashboardStats(state, category));
   useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    setLoadState("loading");
-    setError("");
-    taskService
-      .listAll({ signal: controller.signal })
-      .then((data) => {
-        if (!active) return;
-        setTasks(data);
-        setLoadState("success");
-      })
-      .catch((failure) => {
-        if (!active || failure.name === "AbortError") return;
-        setError(failure.message);
-        setLoadState("error");
-      });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [revision]);
+    const request = dispatch(fetchAllTasks());
+    return () => request.abort();
+  }, [dispatch, revision, taskRevision]);
 
-  // Статистика вычисляется при каждом рендере из данных API и выбранного фильтра.
-  const stats = getDashboardStats(tasks, category);
   const categoryParam = category === "Все" ? {} : { category };
 
   return (
-    <section className="page dashboard-page" aria-labelledby="dashboard-heading">
+    <section
+      className="page dashboard-page"
+      aria-labelledby="dashboard-heading"
+    >
       <div className="panel-heading">
         <h1 id="dashboard-heading">Дашборд</h1>
         <button
@@ -60,7 +48,11 @@ export default function DashboardPage() {
           Обновить данные
         </button>
       </div>
-      <div className="category-filters" role="group" aria-label="Фильтр дашборда">
+      <div
+        className="category-filters"
+        role="group"
+        aria-label="Фильтр дашборда"
+      >
         {["Все", ...CATEGORIES].map((item) => (
           <button
             key={item}
@@ -114,7 +106,11 @@ export default function DashboardPage() {
             </Link>
             <Link
               className="stat-card is-warning"
-              to={tasksLink({ ...categoryParam, status: "active", sort: "dueDate" })}
+              to={tasksLink({
+                ...categoryParam,
+                status: "active",
+                sort: "dueDate",
+              })}
             >
               <span>Просрочено</span>
               <strong>{stats.overdue}</strong>
@@ -127,8 +123,13 @@ export default function DashboardPage() {
               <h2 id="by-category">По направлениям</h2>
               <ul>
                 {stats.byCategory.map((row) => (
-                  <li key={row.name} className={row.name === category ? "is-selected" : ""}>
-                    <Link to={tasksLink({ category: row.name })}>{row.name}</Link>
+                  <li
+                    key={row.name}
+                    className={row.name === category ? "is-selected" : ""}
+                  >
+                    <Link to={tasksLink({ category: row.name })}>
+                      {row.name}
+                    </Link>
                     <span>
                       {row.completed} из {row.total} готово
                     </span>
@@ -146,7 +147,9 @@ export default function DashboardPage() {
               <ul>
                 {stats.byPriority.map((row) => (
                   <li key={row.name}>
-                    <Link to={tasksLink({ ...categoryParam, sort: "priority" })}>
+                    <Link
+                      to={tasksLink({ ...categoryParam, sort: "priority" })}
+                    >
                       {row.name}
                     </Link>
                     <span>

@@ -1,3 +1,10 @@
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchTasks,
+  mutateTask,
+  selectTaskList,
+  selectTaskRevision,
+} from "../features/tasks/tasksSlice.js";
 import { useEffect, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import TaskSummary from "../components/TaskSummary.jsx";
@@ -12,12 +19,23 @@ import { taskService } from "../services/taskService.js";
 import { useTaskFilters } from "../hooks/useTaskFilters.js";
 
 export default function TasksPage() {
+  const dispatch = useDispatch();
+  const result = useSelector(selectTaskList);
+  const taskRevision = useSelector(selectTaskRevision);
+  const loadState = result.status === "idle" ? "loading" : result.status;
+  const error = result.error;
   const { setSummary } = useOutletContext();
   const location = useLocation();
   // Настройки читаются один раз и служат значениями по умолчанию для URL.
   const [settings] = useState(readSettings);
   const { filters, updateFilters } = useTaskFilters(settings);
   const { search, category, status, sort, page, pageSize } = filters;
+
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   const [formTask, setFormTask] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -26,12 +44,6 @@ export default function TasksPage() {
   const [actionError, setActionError] = useState("");
   // Сообщение могло прийти со страницы карточки (например, после удаления).
   const [notice, setNotice] = useState(location.state?.notice ?? "");
-  const [result, setResult] = useState({
-    items: [], total: 0, page: 1, pageSize,
-    totalPages: 1, summary: { total: 0, completed: 0 },
-  });
-  const [loadState, setLoadState] = useState("loading");
-  const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
@@ -39,27 +51,32 @@ export default function TasksPage() {
   }, [sort, pageSize]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    setLoadState("loading");
-    setError("");
-    taskService.list({ search, category, status, sort, page, pageSize,
-      signal: controller.signal,
-    }).then((data) => {
-      if (!active) return;
-      setResult(data);
-      setSummary(data.summary);
-      setLoadState("success");
-    }).catch((failure) => {
-      if (!active || failure.name === "AbortError") return;
-      setError(failure.message);
-      setLoadState("error");
-    });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [search, category, status, sort, page, pageSize, revision, setSummary]);
+    const request = dispatch(
+      fetchTasks({
+        search: debouncedSearch,
+        category,
+        status,
+        sort,
+        page,
+        pageSize,
+      }),
+    );
+    return () => request.abort();
+  }, [
+    dispatch,
+    debouncedSearch,
+    category,
+    status,
+    sort,
+    page,
+    pageSize,
+    revision,
+    taskRevision,
+  ]);
+
+  useEffect(() => {
+    if (loadState === "success") setSummary(result.summary);
+  }, [loadState, result.summary, setSummary]);
 
   // Сбрасываем кэш, иначе повторный запрос с теми же фильтрами вернул бы старый ответ.
   function reload() {
@@ -87,15 +104,22 @@ export default function TasksPage() {
     if (busy) return;
     setBusy(true);
     try {
-      if (formTask) await taskService.update(formTask.id, values);
-      else await taskService.create(values);
+      if (formTask)
+        await dispatch(
+          mutateTask({ operation: "update", id: formTask.id, values }),
+        ).unwrap();
+      else await dispatch(mutateTask({ operation: "create", values })).unwrap();
       setIsFormOpen(false);
       setNotice(formTask ? "Изменения сохранены." : "Задача добавлена.");
       // Новая задача должна оказаться первой: сбрасываем фильтры и сортируем по новизне.
       if (!formTask) {
-        updateFilters({ search: "", category: "Все", status: "all", sort: "newest" });
+        updateFilters({
+          search: "",
+          category: "Все",
+          status: "all",
+          sort: "newest",
+        });
       }
-      reload();
     } finally {
       setBusy(false);
     }
@@ -106,11 +130,16 @@ export default function TasksPage() {
     setBusy(true);
     setActionError("");
     try {
-      await taskService.update(task.id, { completed: !task.completed });
+      await dispatch(
+        mutateTask({
+          operation: "update",
+          id: task.id,
+          values: { completed: !task.completed },
+        }),
+      ).unwrap();
       setNotice(
         task.completed ? "Задача возвращена в работу." : "Задача выполнена.",
       );
-      reload();
     } catch (failure) {
       setActionError(failure.message);
     } finally {
@@ -129,10 +158,9 @@ export default function TasksPage() {
     setBusy(true);
     setActionError("");
     try {
-      await taskService.remove(itemId);
+      await dispatch(mutateTask({ operation: "remove", id: itemId })).unwrap();
       setDeleteTask(null);
       setNotice("Задача удалена.");
-      reload();
     } catch (failure) {
       setActionError(failure.message);
     } finally {
@@ -144,13 +172,23 @@ export default function TasksPage() {
     <>
       <div className="panel-heading">
         <h2 id="tasks-heading">Мои задачи</h2>
-        <button className="secondary-button" type="button"
-          disabled={busy || loadState === "loading"} onClick={reload}>
+        <button
+          className="secondary-button"
+          type="button"
+          disabled={busy || loadState === "loading"}
+          onClick={reload}
+        >
           Обновить список
         </button>
-        <button className="text-button" type="button"
+        <button
+          className="text-button"
+          type="button"
           disabled={busy || loadState === "loading"}
-          onClick={() => { taskService.failNextRequest(); setRevision((value) => value + 1); }}>
+          onClick={() => {
+            taskService.failNextRequest();
+            setRevision((value) => value + 1);
+          }}
+        >
           Проверить ошибку API
         </button>
         {!isFormOpen && (

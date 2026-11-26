@@ -7,6 +7,7 @@ import {
 import Icon from "./Icon.jsx";
 
 export default function WeatherWidget() {
+  const [source, setSource] = useState("api");
   const [weather, setWeather] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,7 +32,10 @@ export default function WeatherWidget() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (!isValidWeather(data)) throw new Error("Invalid weather response");
-        if (isActive) setWeather(data.current);
+        if (isActive) {
+          setWeather(data.current);
+          setSource(response.headers?.get("X-Klick-Cache") === "hit" ? "cache" : "api");
+        }
       } catch {
         if (isActive)
           setError(
@@ -122,6 +126,7 @@ export default function WeatherWidget() {
           </>
         )
       )}
+      {weather && source === "cache" && <p className="cache-banner is-cache" role="status">Погода из кэша · данные могут быть устаревшими</p>}
       <a
         className="weather-source"
         href="https://open-meteo.com/"

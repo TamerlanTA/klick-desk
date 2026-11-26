@@ -1,3 +1,5 @@
+import { Provider } from "react-redux";
+import { createAppStore } from "../src/store/store.js";
 import { StrictMode } from "react";
 import {
   act,
@@ -19,19 +21,17 @@ beforeEach(() => {
   localStorage.clear();
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          current: {
-            temperature_2m: 20,
-            apparent_temperature: 17,
-            weather_code: 0,
-            wind_speed_10m: 5,
-          },
-        }),
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        current: {
+          temperature_2m: 20,
+          apparent_temperature: 17,
+          weather_code: 0,
+          wind_speed_10m: 5,
+        },
       }),
+    }),
   );
 });
 afterEach(() => {
@@ -43,21 +43,43 @@ it("ignores outdated details when switching tasks even if the API ignores abort"
   vi.spyOn(taskApi, "get").mockImplementation(
     () => new Promise((resolve) => pending.push(resolve)),
   );
-  const props = { onEdit: vi.fn(), onDelete: vi.fn(), onToggle: vi.fn(), busy: false };
-  const { rerender } = render(<TaskDetails id="old" {...props} />, { wrapper: MemoryRouter });
+  const props = {
+    onEdit: vi.fn(),
+    onDelete: vi.fn(),
+    onToggle: vi.fn(),
+    busy: false,
+  };
+  const { rerender } = render(<TaskDetails id="old" {...props} />, {
+    wrapper: ({ children }) => (
+      <Provider store={createAppStore()}>
+        <MemoryRouter>{children}</MemoryRouter>
+      </Provider>
+    ),
+  });
   rerender(<TaskDetails id="new" {...props} />);
-  await act(async () => pending[1]({ ...initialTasks[0], id: "new", title: "Актуальная задача" }));
-  await act(async () => pending[0]({ ...initialTasks[1], id: "old", title: "Устаревшая задача" }));
-  expect(screen.getByRole("heading", { name: "Актуальная задача" })).toBeTruthy();
+  await act(async () =>
+    pending[1]({ ...initialTasks[0], id: "new", title: "Актуальная задача" }),
+  );
+  await act(async () =>
+    pending[0]({ ...initialTasks[1], id: "old", title: "Устаревшая задача" }),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Актуальная задача" }),
+  ).toBeTruthy();
   expect(screen.queryByText("Устаревшая задача")).toBe(null);
 });
 
 it("loads saved settings and persists changes without component storage access", async () => {
-  localStorage.setItem("klick-desk.settings.v1", JSON.stringify({ sort: "title", pageSize: 24 }));
+  localStorage.setItem(
+    "klick-desk.settings.v1",
+    JSON.stringify({ sort: "title", pageSize: 24 }),
+  );
   renderApp("/tasks", StrictMode);
   await screen.findByRole("list", { name: "Задачи" });
   expect(screen.getByLabelText("Сортировка задач").value).toBe("title");
-  expect(JSON.parse(localStorage.getItem("klick-desk.settings.v1")).pageSize).toBe(24);
+  expect(
+    JSON.parse(localStorage.getItem("klick-desk.settings.v1")).pageSize,
+  ).toBe(24);
 });
 
 it("paginates, resets filters to page one, opens detail and edits a task", async () => {
@@ -174,7 +196,9 @@ it("reloads through a simulated error and retries successfully", async () => {
   await screen.findByRole("list", { name: "Задачи" });
   fireEvent.click(screen.getByRole("button", { name: "Проверить ошибку API" }));
   expect(await screen.findByText(/Временная ошибка API/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Повторить загрузку задач" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Повторить загрузку задач" }),
+  );
   expect(await screen.findByRole("list", { name: "Задачи" })).toBeTruthy();
 });
 
@@ -182,19 +206,36 @@ it("finishes the captured task after leaving details without changing another ta
   renderApp();
   const list = await screen.findByRole("list", { name: "Задачи" });
   const original = JSON.parse(localStorage.getItem(TASKS_KEY)).tasks;
-  const first = original.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))[0];
+  const first = original
+    .slice()
+    .sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id),
+    )[0];
   fireEvent.click(within(list).getAllByRole("link")[0]);
   await screen.findByRole("button", { name: "Редактировать задачу" });
-  const action = screen.getByRole("button", { name: first.completed ? "Вернуть в работу" : "Отметить выполненной" });
+  const action = screen.getByRole("button", {
+    name: first.completed ? "Вернуть в работу" : "Отметить выполненной",
+  });
   fireEvent.click(action);
-  expect(screen.getByRole("button", { name: "Сохраняем…" }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "Сохраняем…" }).disabled).toBe(
+    true,
+  );
   // Уходим со страницы карточки, не дожидаясь ответа API.
   fireEvent.click(screen.getByRole("link", { name: "← Назад" }));
   await screen.findByRole("list", { name: "Задачи" });
   await waitFor(() =>
-    expect(JSON.parse(localStorage.getItem(TASKS_KEY)).tasks.find((task) => task.id === first.id).completed).toBe(!first.completed),
+    expect(
+      JSON.parse(localStorage.getItem(TASKS_KEY)).tasks.find(
+        (task) => task.id === first.id,
+      ).completed,
+    ).toBe(!first.completed),
   );
   const saved = JSON.parse(localStorage.getItem(TASKS_KEY)).tasks;
-  expect(saved.find((task) => task.id === first.id).completed).toBe(!first.completed);
-  expect(saved.filter((task) => task.id !== first.id)).toEqual(original.filter((task) => task.id !== first.id));
+  expect(saved.find((task) => task.id === first.id).completed).toBe(
+    !first.completed,
+  );
+  expect(saved.filter((task) => task.id !== first.id)).toEqual(
+    original.filter((task) => task.id !== first.id),
+  );
 });
