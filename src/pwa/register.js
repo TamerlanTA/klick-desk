@@ -28,7 +28,13 @@ export function initializePwa(store) {
   window.addEventListener("appinstalled", () => store.dispatch(appInstalled()));
   if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
   let refreshing = false;
+  let hadController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    // First installation claims this page without discarding an open form.
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
     if (refreshing) return;
     refreshing = true;
     window.location.reload();
